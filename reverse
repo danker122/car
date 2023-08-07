@@ -1,0 +1,128 @@
+serv
+
+#include<stdio.h>
+#include<sys/types.h>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+#include<fcntl.h>
+#include<string.h>
+#include<stdlib.h>
+#include<unistd.h>
+
+int main(int argc, char *argv[]){
+   struct sockaddr_in server, cli;
+   int cli_len;
+   int sd, n, i, len;
+   int data, temp;
+   
+   char buffer[100];
+   
+   if((sd = socket(AF_INET,SOCK_STREAM,0))<0){
+      perror("Socket Failed");
+      exit(1);
+   }
+   
+   bzero(&server, sizeof(server));
+   server.sin_family = AF_INET;
+   server.sin_port = htons(atoi(argv[1]));
+   server.sin_addr.s_addr = htonl(INADDR_ANY);
+   
+   if(bind(sd, (struct sockaddr*)&server, sizeof(server))<0){
+      perror("Bind Failed");
+      exit(1);
+   }
+   
+   listen(sd, 5);
+   if((data = accept(sd,(struct sockaddr *)&cli, &cli_len))<0){
+      perror("Accept Failed");
+      exit(1);
+   }
+   
+   read(data, buffer, sizeof(buffer));
+   
+   len = strlen(buffer);
+   for(i=0;i<=len/2;i++){
+     temp = buffer[i];
+     buffer[i] = buffer[len-1-i];
+     buffer[len-1-i] = temp;
+   }
+   
+   write(data, buffer, sizeof(buffer));
+   
+   close(data);
+   close(sd);
+}
+
+
+cli
+
+#include<stdio.h>
+#include<sys/types.h>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+#include<fcntl.h>
+#include<string.h>
+#include<stdlib.h>
+#include<unistd.h>
+
+int main(int argc, char *argv[]){
+   struct sockaddr_in server;
+   int sd;
+   char buffer[200];
+   
+   if((sd = socket(AF_INET, SOCK_STREAM, 0))<0){
+      perror("Socket Failed : ");
+      exit(1);
+   }
+   
+   bzero(&server,sizeof(server));
+   server.sin_family = AF_INET;
+   server.sin_port = htons(atoi(argv[2]));
+   inet_pton(AF_INET, argv[1], &server.sin_addr);
+   
+   if(connect(sd,(struct sockaddr *)&server,sizeof(server))<0){
+      perror("Connection Failed :");
+      exit(1);
+   }
+    fgets(buffer, sizeof(buffer), stdin);
+    buffer[strlen(buffer)-1] = '\0';
+    
+    write(sd, buffer, sizeof(buffer));
+    read(sd, buffer, sizeof(buffer));
+    
+    printf("%s\n", buffer);
+    close(sd);
+}
+
+run
+
+gcc -o server server.c
+./server 5098
+
+gcc client -o client.c
+./client 127.0.0.1 5098
+
+prime
+
+#include <stdio.h>
+int main() {
+  int n, i, flag = 0;
+  printf("Enter a positive integer: ");
+  scanf("%d", &n);
+  if (n == 0 || n == 1)
+    flag = 1;
+  for (i = 2; i <= n / 2; ++i) {
+    if (n % i == 0) {
+      flag = 1;
+      break;
+    }
+  }
+  if (flag == 0)
+    printf("%d is a prime number.", n);
+  else
+    printf("%d is not a prime number.", n);
+  return 0;
+}
+
