@@ -1,0 +1,103 @@
+serv
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <time.h>
+
+#define PORT 8080
+#define BUFFER_SIZE 1024
+
+int main() {
+    int server_fd;
+    struct sockaddr_in address, client_addr;
+    socklen_t addrlen = sizeof(client_addr);
+    char buffer[BUFFER_SIZE] = {0};
+
+    // Create socket
+    if ((server_fd = socket(AF_INET, SOCK_DGRAM, 0)) == 0) {
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Setup the server address struct
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
+
+    // Bind socket to address
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+        perror("Bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("UDP Time Server is listening on port %d...\n", PORT);
+
+    while (1) {
+        // Receive time request from client
+        recvfrom(server_fd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)&client_addr, &addrlen);
+
+        // Get current time
+        time_t current_time;
+        struct tm *time_info;
+        time(&current_time);
+        time_info = localtime(&current_time);
+
+        // Format time as a string
+        strftime(buffer, BUFFER_SIZE, "%Y-%m-%d %H:%M:%S", time_info);
+
+        // Send time to the client
+        sendto(server_fd, buffer, strlen(buffer), 0, (struct sockaddr *)&client_addr, addrlen);
+    }
+
+    return 0;
+}
+
+
+cli
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+#define PORT 8080
+#define BUFFER_SIZE 1024
+
+int main() {
+    int sock;
+    struct sockaddr_in server_addr;
+    char buffer[BUFFER_SIZE] = {0};
+
+    // Create socket
+    if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("Socket creation failed");
+        return -1;
+    }
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+
+    // Convert IPv4 and IPv6 addresses from text to binary form
+    if (inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr) <= 0) {
+        perror("Invalid address/ Address not supported");
+        return -1;
+    }
+
+    // Send a time request to the server
+    sendto(sock, "Time request", strlen("Time request"), 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
+
+    // Receive time from the server
+    int msg_len = recvfrom(sock, buffer, BUFFER_SIZE, 0, NULL, NULL);
+    buffer[msg_len] = '\0';
+
+    printf("Server time: %s\n", buffer);
+
+    close(sock);
+
+    return 0;
+}
